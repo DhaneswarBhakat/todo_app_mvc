@@ -1,134 +1,131 @@
-# Todo App MVC
+# Todo App MVC with Fingerprint Authentication
 
-A Flutter todo application built using the MVC (Model-View-Controller) architecture pattern. This app demonstrates clean separation of concerns and follows Flutter best practices.
+A secure Flutter todo application built using the MVC (Model-View-Controller) architecture pattern with biometric authentication.
 
 ## Features
 
-- ✅ Create, read, update, and delete todos
-- 🔍 Search todos by title or description
-- 🏷️ Filter todos by status (All, Pending, Completed, High Priority)
-- ⭐ Priority levels (Low, Medium, High) with color coding
-- 📊 Statistics dashboard with completion percentage
-- 💾 Local storage using SharedPreferences
-- 🎨 Modern Material Design 3 UI
-- 📱 Responsive design for different screen sizes
+### 🔐 Security Features
+- **Fingerprint Authentication**: Secure access to your todos using biometric authentication
+- **Auto-logout**: Automatic logout when app is closed for enhanced security
+- **Authentication State Management**: Persistent authentication state with secure storage
 
-## MVC Architecture
+### 📝 Todo Management
+- Create, read, update, and delete todos
+- Mark todos as complete/incomplete
+- Search and filter todos
+- Statistics dashboard showing todo counts
+- Beautiful and intuitive UI
 
-### Model Layer (`lib/models/`)
-- **`todo.dart`**: Defines the Todo data model with properties like id, title, description, completion status, priority, and timestamps.
+### 🎨 User Experience
+- Dark/Light theme support
+- Smooth animations and transitions
+- Responsive design
+- Modern Material Design 3
 
-### View Layer (`lib/views/`)
-- **`main_app.dart`**: Root application widget with theme configuration
-- **`todo_list_screen.dart`**: Main screen displaying todos with search and filter functionality
-- **`add_todo_screen.dart`**: Screen for creating new todos
-- **`todo_detail_screen.dart`**: Screen for viewing and editing todo details
+### ⚙️ Settings & Configuration
+- Biometric authentication toggle
+- Theme preferences
+- App settings management
 
-### Controller Layer (`lib/controllers/`)
-- **`todo_controller.dart`**: Manages business logic, state, and communication between Model and View layers
+## Architecture
 
-### Service Layer (`lib/services/`)
-- **`todo_service.dart`**: Handles data operations and persistence using SharedPreferences
+This app follows the MVC (Model-View-Controller) pattern:
+
+### Models (`lib/models/`)
+- `todo.dart`: Todo data model with properties like id, title, description, completion status, etc.
+
+### Views (`lib/views/`)
+- `login_screen.dart`: Fingerprint authentication screen
+- `todo_list_screen.dart`: Main todo list with search and filter functionality
+- `add_todo_screen.dart`: Screen for adding new todos
+- `todo_detail_screen.dart`: Detailed view of individual todos
+- `settings_screen.dart`: App settings and authentication management
+- `splash_screen.dart`: App loading screen
+
+### Controllers (`lib/controllers/`)
+- `todo_controller.dart`: Manages todo business logic, CRUD operations, and state
+
+### Services (`lib/services/`)
+- `auth_service.dart`: Handles biometric authentication using local_auth
+- `todo_service.dart`: Data persistence and storage operations
+- `theme_service.dart`: Theme management and preferences
 
 ### Utils (`lib/utils/`)
-- **`todo_widgets.dart`**: Reusable UI components like TodoCard, PrioritySelector, and TodoStatsCard
-
-## Project Structure
-
-```
-lib/
-├── models/
-│   └── todo.dart
-├── views/
-│   ├── main_app.dart
-│   ├── todo_list_screen.dart
-│   ├── add_todo_screen.dart
-│   └── todo_detail_screen.dart
-├── controllers/
-│   └── todo_controller.dart
-├── services/
-│   └── todo_service.dart
-├── utils/
-│   └── todo_widgets.dart
-└── main.dart
-```
+- `todo_widgets.dart`: Reusable UI components
 
 ## Getting Started
 
 ### Prerequisites
 - Flutter SDK (>=3.4.1)
-- Dart SDK (>=3.4.1)
+- Android Studio / VS Code
+- Android device with fingerprint sensor (for testing biometric features)
 
 ### Installation
 
-1. Clone the repository or navigate to the project directory
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd todo_app_mvc
+```
+
 2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
+```bash
+flutter pub get
+```
+
 3. Run the app:
-   ```bash
-   flutter run
-   ```
+```bash
+flutter run
+```
+
+### Biometric Authentication Setup
+
+1. **First Launch**: The app will show the login screen with fingerprint authentication
+2. **Enable Authentication**: Tap the fingerprint button to authenticate
+3. **Settings**: Access settings via the gear icon to manage authentication preferences
+4. **Logout**: Use the logout button to sign out and require re-authentication
 
 ## Dependencies
 
-- **provider**: State management
-- **shared_preferences**: Local data storage
-- **uuid**: Unique ID generation
+- `local_auth`: Biometric authentication
+- `shared_preferences`: Local data storage
+- `provider`: State management
+- `uuid`: Unique ID generation
 
-## How to Use
+## Android Permissions
 
-1. **Adding Todos**: Tap the floating action button (+) to create a new todo
-2. **Viewing Todos**: All todos are displayed on the main screen with priority indicators
-3. **Searching**: Use the search bar to find specific todos
-4. **Filtering**: Use the filter chips to view todos by status or priority
-5. **Editing**: Tap on a todo to view details and edit
-6. **Completing**: Use the checkbox or toggle button to mark todos as complete
-7. **Deleting**: Use the delete button to remove todos
+The app requires the following Android permissions for biometric authentication:
 
-## MVC Benefits in This App
+```xml
+<uses-permission android:name="android.permission.USE_BIOMETRIC" />
+<uses-permission android:name="android.permission.USE_FINGERPRINT" />
+```
 
-### Separation of Concerns
-- **Model**: Pure data structure with business logic methods
-- **View**: UI components that display data and handle user interactions
-- **Controller**: Orchestrates between Model and View, manages state
+## Security Features
 
-### Maintainability
-- Easy to modify individual components without affecting others
-- Clear responsibility boundaries
-- Testable architecture
+### Biometric Authentication
+- Uses device's fingerprint sensor for secure access
+- Supports both fingerprint and face recognition (where available)
+- Secure storage of authentication state
+- Automatic logout for enhanced security
 
-### Scalability
-- Easy to add new features
-- Modular design allows for easy extension
-- Reusable components
-
-## Key Features Implementation
-
-### State Management
-- Uses Provider pattern for state management
-- Controller extends ChangeNotifier for reactive updates
-- Automatic UI updates when data changes
-
-### Data Persistence
-- SharedPreferences for local storage
-- JSON serialization/deserialization
-- Automatic save/load operations
-
-### UI/UX
-- Material Design 3 components
-- Responsive layout
-- Intuitive navigation
-- Visual feedback for user actions
+### Data Protection
+- Local storage only - no data sent to external servers
+- Secure authentication state management
+- User-controlled authentication preferences
 
 ## Contributing
 
-Feel free to contribute to this project by:
-- Reporting bugs
-- Suggesting new features
-- Submitting pull requests
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is licensed under the MIT License.
+
+## Support
+
+For support or questions about the fingerprint authentication feature, please open an issue in the repository.

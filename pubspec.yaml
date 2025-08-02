@@ -43,6 +43,11 @@ dependencies:
   
   # State management
   provider: ^6.1.1
+  
+  # Biometric authentication
+  local_auth: ^2.1.8
+  local_auth_android: ^1.0.38
+  local_auth_ios: ^1.1.5
 
 dev_dependencies:
   flutter_test:

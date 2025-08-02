@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../controllers/todo_controller.dart';
 import '../models/todo.dart';
 import '../services/theme_service.dart';
+import '../services/auth_service.dart';
 import 'add_todo_screen.dart';
 import 'todo_detail_screen.dart';
+import 'settings_screen.dart';
 import '../utils/todo_widgets.dart';
 
 class TodoListScreen extends StatefulWidget {
@@ -56,6 +58,14 @@ class _TodoListScreenState extends State<TodoListScreen> {
               );
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => _navigateToSettings(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => _showLogoutDialog(context),
+          ),
         ],
       ),
       body: Consumer<TodoController>(
@@ -91,7 +101,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
 
   Widget _buildSearchAndFilterSection(TodoController controller) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width > 600 ? 24 : 16),
       child: Column(
         children: [
           // Search Bar
@@ -145,19 +155,36 @@ class _TodoListScreenState extends State<TodoListScreen> {
   }
 
   Widget _buildStatisticsSection(TodoController controller) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16),
       child: Card(
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildStatItem('Total', controller.totalCount, Colors.blue),
-              _buildStatItem('Pending', controller.pendingCount, Colors.orange),
-              _buildStatItem('Completed', controller.completedCount, Colors.green),
-            ],
-          ),
+          padding: EdgeInsets.all(isTablet ? 24 : 16),
+          child: isTablet 
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatItem('Total', controller.totalCount, Colors.blue),
+                  _buildStatItem('Pending', controller.pendingCount, Colors.orange),
+                  _buildStatItem('Completed', controller.completedCount, Colors.green),
+                ],
+              )
+            : Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatItem('Total', controller.totalCount, Colors.blue),
+                      _buildStatItem('Pending', controller.pendingCount, Colors.orange),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildStatItem('Completed', controller.completedCount, Colors.green),
+                ],
+              ),
         ),
       ),
     );
@@ -241,6 +268,15 @@ class _TodoListScreenState extends State<TodoListScreen> {
     );
   }
 
+  void _navigateToSettings(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
+      ),
+    );
+  }
+
   void _navigateToTodoDetail(BuildContext context, Todo todo) {
     Navigator.push(
       context,
@@ -267,6 +303,29 @@ class _TodoListScreenState extends State<TodoListScreen> {
               Navigator.pop(context);
             },
             child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout? You will need to authenticate again to access your todos.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<AuthService>().logout();
+              Navigator.pop(context);
+            },
+            child: const Text('Logout'),
           ),
         ],
       ),
