@@ -5,11 +5,13 @@ import '../models/todo.dart';
 import '../models/user.dart';
 
 class ApiService {
-  // Change this to your computer's IP address when testing on device/emulator
-  // Use 'localhost' when testing on web
-  // Use '10.0.2.2' when testing on Android emulator
-  // Use your computer's IP (e.g., '192.168.1.100') when testing on physical device
-  static const String baseUrl = 'http://10.155.78.76:3000/api'; // Your computer's IP
+  // Change this to your Railway deployment URL
+  // Replace 'your-app-name' with your actual Railway app name
+  // Example: https://todo-app-backend-production.up.railway.app/api
+  static const String baseUrl = 'https://your-app-name.up.railway.app/api';
+  
+  // For local development, uncomment this line:
+  // static const String baseUrl = 'http://10.155.78.76:3000/api';
   static const String authTokenKey = 'auth_token';
   static const String userDataKey = 'user_data';
 

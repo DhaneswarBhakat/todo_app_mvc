@@ -1,0 +1,15 @@
+# Ignore Flutter app files - only deploy backend
+lib/
+test/
+android/
+ios/
+linux/
+macos/
+windows/
+web/
+pubspec.yaml
+pubspec.lock
+analysis_options.yaml
+.metadata
+devtools_options.yaml
+README.md
