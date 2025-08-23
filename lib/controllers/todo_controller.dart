@@ -1,11 +1,8 @@
 import 'package:flutter/foundation.dart';
-import 'package:uuid/uuid.dart';
 import '../models/todo.dart';
-import '../services/todo_service.dart';
+import '../services/api_service.dart';
 
 class TodoController extends ChangeNotifier {
-  final TodoService _todoService = TodoService();
-  final Uuid _uuid = Uuid();
   
   List<Todo> _todos = [];
   List<Todo> _filteredTodos = [];
@@ -21,17 +18,26 @@ class TodoController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   
   // Statistics
-  int get totalCount => _todoService.totalCount;
-  int get completedCount => _todoService.completedCount;
-  int get pendingCount => _todoService.pendingCount;
-  double get completionPercentage => _todoService.completionPercentage;
+  int get totalCount => _todos.length;
+  int get completedCount => _todos.where((todo) => todo.isCompleted).length;
+  int get pendingCount => _todos.where((todo) => !todo.isCompleted).length;
+  double get completionPercentage {
+    if (_todos.isEmpty) return 0.0;
+    return (completedCount / totalCount) * 100;
+  }
 
   // Initialize controller
   Future<void> initialize() async {
     _setLoading(true);
-    await _todoService.loadTodos();
-    _todos = _todoService.todos;
-    _applyFilters();
+    try {
+      print('🔄 Fetching todos from API...');
+      _todos = await ApiService.getTodos();
+      print('✅ Loaded ${_todos.length} todos from API');
+      _applyFilters();
+    } catch (e) {
+      print('❌ Error loading todos from API: $e');
+      _todos = [];
+    }
     _setLoading(false);
   }
 
@@ -41,50 +47,88 @@ class TodoController extends ChangeNotifier {
     String description = '',
     int priority = 1,
   }) async {
-    final todo = Todo(
-      id: _uuid.v4(),
-      title: title.trim(),
-      description: description.trim(),
-      priority: priority,
-      createdAt: DateTime.now(),
-    );
-
-    await _todoService.addTodo(todo);
-    _todos = _todoService.todos;
-    _applyFilters();
-    notifyListeners();
+    try {
+      print('🔄 Creating todo via API...');
+      final newTodo = await ApiService.createTodo(
+        title: title.trim(),
+        description: description.trim(),
+        priority: priority,
+      );
+      print('✅ Todo created via API: ${newTodo.id}');
+      
+      // Refresh todos from API
+      await refreshTodos();
+    } catch (e) {
+      print('❌ Error creating todo: $e');
+      rethrow;
+    }
   }
 
   // Update todo
   Future<void> updateTodo(Todo updatedTodo) async {
-    await _todoService.updateTodo(updatedTodo);
-    _todos = _todoService.todos;
-    _applyFilters();
-    notifyListeners();
+    try {
+      print('🔄 Updating todo via API: ${updatedTodo.id}');
+      await ApiService.updateTodo(
+        id: updatedTodo.id,
+        title: updatedTodo.title,
+        description: updatedTodo.description,
+        priority: updatedTodo.priority,
+        category: updatedTodo.category,
+      );
+      print('✅ Todo updated via API');
+      
+      // Refresh todos from API
+      await refreshTodos();
+    } catch (e) {
+      print('❌ Error updating todo: $e');
+      rethrow;
+    }
   }
 
   // Delete todo
   Future<void> deleteTodo(String id) async {
-    await _todoService.deleteTodo(id);
-    _todos = _todoService.todos;
-    _applyFilters();
-    notifyListeners();
+    try {
+      print('🔄 Deleting todo via API: $id');
+      await ApiService.deleteTodo(id);
+      print('✅ Todo deleted via API');
+      
+      // Refresh todos from API
+      await refreshTodos();
+    } catch (e) {
+      print('❌ Error deleting todo: $e');
+      // If delete fails, still refresh to show current state
+      await refreshTodos();
+    }
   }
 
   // Toggle todo completion
   Future<void> toggleTodoCompletion(String id) async {
-    await _todoService.toggleTodoCompletion(id);
-    _todos = _todoService.todos;
-    _applyFilters();
-    notifyListeners();
+    try {
+      print('🔄 Toggling todo completion via API: $id');
+      await ApiService.toggleTodoCompletion(id);
+      print('✅ Todo completion toggled via API');
+      
+      // Refresh todos from API
+      await refreshTodos();
+    } catch (e) {
+      print('❌ Error toggling todo completion: $e');
+      rethrow;
+    }
   }
 
   // Clear completed todos
   Future<void> clearCompletedTodos() async {
-    await _todoService.clearCompletedTodos();
-    _todos = _todoService.todos;
-    _applyFilters();
-    notifyListeners();
+    try {
+      print('🔄 Clearing completed todos via API...');
+      await ApiService.clearCompletedTodos();
+      print('✅ Completed todos cleared via API');
+      
+      // Refresh todos from API
+      await refreshTodos();
+    } catch (e) {
+      print('❌ Error clearing completed todos: $e');
+      rethrow;
+    }
   }
 
   // Search todos
@@ -107,7 +151,11 @@ class TodoController extends ChangeNotifier {
 
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
-      filtered = _todoService.searchTodos(_searchQuery);
+      filtered = _todos
+          .where((todo) => 
+              todo.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+              todo.description.toLowerCase().contains(_searchQuery.toLowerCase()))
+          .toList();
     }
 
     // Apply status filter
@@ -138,12 +186,16 @@ class TodoController extends ChangeNotifier {
 
   // Get todo by id
   Todo? getTodoById(String id) {
-    return _todoService.getTodoById(id);
+    try {
+      return _todos.firstWhere((todo) => todo.id == id);
+    } catch (e) {
+      return null;
+    }
   }
 
   // Get todos by priority
   List<Todo> getTodosByPriority(int priority) {
-    return _todoService.getTodosByPriority(priority);
+    return _todos.where((todo) => todo.priority == priority).toList();
   }
 
   // Set loading state
@@ -154,7 +206,16 @@ class TodoController extends ChangeNotifier {
 
   // Refresh todos
   Future<void> refreshTodos() async {
-    await initialize();
+    try {
+      print('🔄 Refreshing todos from API...');
+      _todos = await ApiService.getTodos();
+      print('✅ Refreshed ${_todos.length} todos from API');
+      _applyFilters();
+      notifyListeners();
+    } catch (e) {
+      print('❌ Error refreshing todos: $e');
+      rethrow;
+    }
   }
 }
 

@@ -1,131 +1,290 @@
-# Todo App MVC with Fingerprint Authentication
+# Todo App MVC - Full Stack Flutter Project
 
-A secure Flutter todo application built using the MVC (Model-View-Controller) architecture pattern with biometric authentication.
+A secure, full-stack todo application built with **Flutter (Frontend)** and **Node.js + Express + MongoDB (Backend)**, featuring biometric authentication, theme switching, and cloud data persistence.
 
-## Features
+## 🏗️ Full-Stack Architecture
 
-### 🔐 Security Features
-- **Fingerprint Authentication**: Secure access to your todos using biometric authentication
-- **Auto-logout**: Automatic logout when app is closed for enhanced security
-- **Authentication State Management**: Persistent authentication state with secure storage
+This project follows a **client-server architecture** with:
 
-### 📝 Todo Management
-- Create, read, update, and delete todos
-- Mark todos as complete/incomplete
-- Search and filter todos
-- Statistics dashboard showing todo counts
-- Beautiful and intuitive UI
+### Frontend (Flutter)
+- **Framework**: Flutter with MVC pattern
+- **State Management**: Provider package
+- **Authentication**: Biometric + JWT tokens
+- **Local Storage**: SharedPreferences for offline support
 
-### 🎨 User Experience
-- Dark/Light theme support
-- Smooth animations and transitions
-- Responsive design
-- Modern Material Design 3
+### Backend (Node.js)
+- **Runtime**: Node.js 18+
+- **Framework**: Express.js
+- **Database**: MongoDB with Mongoose ODM
+- **Authentication**: JWT (JSON Web Tokens)
+- **Security**: Helmet, CORS, Rate Limiting
 
-### ⚙️ Settings & Configuration
-- Biometric authentication toggle
-- Theme preferences
-- App settings management
+## 📁 Project Structure
 
-## Architecture
+```
+todo_app_mvc/
+├── lib/                    # Flutter frontend
+│   ├── main.dart          # App entry point
+│   ├── models/            # Data models
+│   ├── views/             # UI screens
+│   ├── controllers/       # Business logic
+│   ├── services/          # API & local services
+│   └── utils/             # Shared components
+├── backend/               # Node.js backend
+│   ├── src/               # Source code
+│   │   ├── config/        # Database & config
+│   │   ├── middleware/    # Auth & validation
+│   │   ├── models/        # MongoDB schemas
+│   │   ├── routes/        # API endpoints
+│   │   └── server.js      # Express server
+│   ├── package.json       # Dependencies
+│   └── README.md          # Backend docs
+└── README.md              # This file
+```
 
-This app follows the MVC (Model-View-Controller) pattern:
-
-### Models (`lib/models/`)
-- `todo.dart`: Todo data model with properties like id, title, description, completion status, etc.
-
-### Views (`lib/views/`)
-- `login_screen.dart`: Fingerprint authentication screen
-- `todo_list_screen.dart`: Main todo list with search and filter functionality
-- `add_todo_screen.dart`: Screen for adding new todos
-- `todo_detail_screen.dart`: Detailed view of individual todos
-- `settings_screen.dart`: App settings and authentication management
-- `splash_screen.dart`: App loading screen
-
-### Controllers (`lib/controllers/`)
-- `todo_controller.dart`: Manages todo business logic, CRUD operations, and state
-
-### Services (`lib/services/`)
-- `auth_service.dart`: Handles biometric authentication using local_auth
-- `todo_service.dart`: Data persistence and storage operations
-- `theme_service.dart`: Theme management and preferences
-
-### Utils (`lib/utils/`)
-- `todo_widgets.dart`: Reusable UI components
-
-## Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
-- Flutter SDK (>=3.4.1)
-- Android Studio / VS Code
-- Android device with fingerprint sensor (for testing biometric features)
+- Flutter SDK 3.4.1+
+- Node.js 18+
+- MongoDB instance
+- Git
 
-### Installation
+### Backend Setup
 
-1. Clone the repository:
+1. **Navigate to backend directory**
+   ```bash
+   cd backend
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment**
+   ```bash
+   cp env.example .env
+   # Edit .env with your MongoDB connection
+   ```
+
+4. **Start backend server**
+   ```bash
+   npm run dev
+   # Server runs on http://localhost:3000
+   ```
+
+### Frontend Setup
+
+1. **Install Flutter dependencies**
+   ```bash
+   flutter pub get
+   ```
+
+2. **Update API configuration** (if needed)
+   - Edit `lib/services/api_service.dart`
+   - Update `baseUrl` if backend runs on different port
+
+3. **Run Flutter app**
+   ```bash
+   flutter run
+   ```
+
+## 🔄 Data Flow
+
+### Authentication Flow
+1. **User opens app** → Biometric authentication
+2. **Success** → JWT token stored locally
+3. **API calls** → Token included in headers
+4. **Backend validates** → JWT verification
+5. **Response** → Data returned to Flutter
+
+### Todo Operations
+1. **User action** → Flutter controller
+2. **Controller** → API service call
+3. **API service** → HTTP request to backend
+4. **Backend** → MongoDB operation
+5. **Response** → Data synced to Flutter state
+
+## 📱 Key Features
+
+### Frontend (Flutter)
+- **Biometric Authentication**: Fingerprint/face recognition
+- **Responsive Design**: Mobile and tablet support
+- **Theme Switching**: Light/dark mode
+- **Offline Support**: Local storage fallback
+- **Real-time Sync**: Automatic data synchronization
+
+### Backend (Node.js)
+- **RESTful API**: Complete CRUD operations
+- **JWT Authentication**: Secure token-based auth
+- **Data Validation**: Input sanitization
+- **Rate Limiting**: API abuse prevention
+- **MongoDB Integration**: Scalable data storage
+
+## 🔐 Security Features
+
+### Frontend Security
+- Biometric authentication
+- Secure token storage
+- Input validation
+- HTTPS enforcement
+
+### Backend Security
+- JWT token validation
+- Password hashing (bcrypt)
+- Rate limiting
+- CORS protection
+- Helmet security headers
+
+## 🌐 API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Get profile
+- `PUT /api/auth/profile` - Update profile
+
+### Todos
+- `GET /api/todos` - List todos (with filters)
+- `POST /api/todos` - Create todo
+- `PUT /api/todos/:id` - Update todo
+- `DELETE /api/todos/:id` - Delete todo
+- `PATCH /api/todos/:id/toggle` - Toggle completion
+
+## 📊 Database Schema
+
+### User Collection
+```javascript
+{
+  email: String (unique),
+  password: String (hashed),
+  name: String,
+  preferences: {
+    theme: String,
+    notifications: Boolean
+  },
+  timestamps: true
+}
+```
+
+### Todo Collection
+```javascript
+{
+  user: ObjectId (ref: User),
+  title: String,
+  description: String,
+  isCompleted: Boolean,
+  priority: Number (1-3),
+  dueDate: Date,
+  category: String,
+  tags: [String],
+  timestamps: true
+}
+```
+
+## 🛠️ Development
+
+### Backend Development
 ```bash
-git clone <repository-url>
-cd todo_app_mvc
+cd backend
+npm run dev          # Development with auto-reload
+npm test            # Run tests
+npm run migrate     # Database migrations
 ```
 
-2. Install dependencies:
+### Frontend Development
 ```bash
-flutter pub get
+flutter pub get     # Install dependencies
+flutter run         # Run app
+flutter build apk   # Build Android APK
+flutter build ios   # Build iOS app
 ```
 
-3. Run the app:
-```bash
-flutter run
+### Environment Configuration
+- **Development**: `http://localhost:3000`
+- **Production**: Update `baseUrl` in `api_service.dart`
+- **MongoDB**: Local or MongoDB Atlas
+
+## 🚀 Deployment
+
+### Backend Deployment
+1. **Environment setup**
+   ```bash
+   NODE_ENV=production
+   MONGODB_URI_PROD=mongodb+srv://...
+   JWT_SECRET=strong-secret-key
+   ```
+
+2. **Start production server**
+   ```bash
+   npm start
+   ```
+
+### Frontend Deployment
+1. **Update API endpoint** in `api_service.dart`
+2. **Build platform-specific packages**
+   ```bash
+   flutter build apk --release
+   flutter build ios --release
+   ```
+
+## 🔍 Monitoring & Debugging
+
+### Backend Health Check
+```
+GET http://localhost:3000/health
 ```
 
-### Biometric Authentication Setup
+### API Testing
+- Use Postman or Insomnia
+- Include JWT token in Authorization header
+- Test all CRUD operations
 
-1. **First Launch**: The app will show the login screen with fingerprint authentication
-2. **Enable Authentication**: Tap the fingerprint button to authenticate
-3. **Settings**: Access settings via the gear icon to manage authentication preferences
-4. **Logout**: Use the logout button to sign out and require re-authentication
+### Flutter Debug
+- Use Flutter DevTools
+- Check network requests
+- Monitor local storage
 
-## Dependencies
+## 📚 Documentation
 
-- `local_auth`: Biometric authentication
-- `shared_preferences`: Local data storage
-- `provider`: State management
-- `uuid`: Unique ID generation
+- **Frontend**: See inline code comments
+- **Backend**: See `backend/README.md`
+- **API**: Complete endpoint documentation
+- **Database**: Schema and relationships
 
-## Android Permissions
-
-The app requires the following Android permissions for biometric authentication:
-
-```xml
-<uses-permission android:name="android.permission.USE_BIOMETRIC" />
-<uses-permission android:name="android.permission.USE_FINGERPRINT" />
-```
-
-## Security Features
-
-### Biometric Authentication
-- Uses device's fingerprint sensor for secure access
-- Supports both fingerprint and face recognition (where available)
-- Secure storage of authentication state
-- Automatic logout for enhanced security
-
-### Data Protection
-- Local storage only - no data sent to external servers
-- Secure authentication state management
-- User-controlled authentication preferences
-
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create feature branch
+3. Follow coding standards
+4. Add tests for new features
+5. Submit pull request
 
-## License
+## 🔮 Future Enhancements
 
-This project is licensed under the MIT License.
+### Frontend
+- Push notifications
+- Widget support
+- Advanced filtering
+- Data export/import
 
-## Support
+### Backend
+- GraphQL API
+- Real-time WebSocket support
+- File upload service
+- Advanced analytics
 
-For support or questions about the fingerprint authentication feature, please open an issue in the repository.
+### Infrastructure
+- Docker containerization
+- CI/CD pipeline
+- Automated testing
+- Performance monitoring
+
+## 📄 License
+
+This project is for educational and personal use.
+
+---
+
+**Built with Flutter, Node.js, Express, and MongoDB for modern full-stack mobile development.**

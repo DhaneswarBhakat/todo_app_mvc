@@ -1,20 +1,28 @@
 class Todo {
   final String id;
-  String title;
-  String description;
-  bool isCompleted;
-  DateTime createdAt;
-  DateTime? completedAt;
-  int priority; // 1: Low, 2: Medium, 3: High
+  final String title;
+  final String description;
+  final bool isCompleted;
+  final int priority; // 1: Low, 2: Medium, 3: High
+  final String category;
+  final DateTime? dueDate;
+  final List<String> tags;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? completedAt;
 
   Todo({
     required this.id,
     required this.title,
     this.description = '',
     this.isCompleted = false,
-    required this.createdAt,
-    this.completedAt,
     this.priority = 1,
+    this.category = 'General',
+    this.dueDate,
+    this.tags = const [],
+    required this.createdAt,
+    required this.updatedAt,
+    this.completedAt,
   });
 
   // Convert Todo to Map for storage
@@ -24,24 +32,30 @@ class Todo {
       'title': title,
       'description': description,
       'isCompleted': isCompleted,
-      'createdAt': createdAt.toIso8601String(),
-      'completedAt': completedAt?.toIso8601String(),
       'priority': priority,
+      'category': category,
+      'dueDate': dueDate?.toIso8601String(),
+      'tags': tags,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'completedAt': completedAt?.toIso8601String(),
     };
   }
 
-  // Create Todo from Map
+  // Create Todo from Map (from API response)
   factory Todo.fromMap(Map<String, dynamic> map) {
     return Todo(
-      id: map['id'],
-      title: map['title'],
+      id: map['_id'] ?? map['id'], // Handle both MongoDB _id and regular id
+      title: map['title'] ?? '',
       description: map['description'] ?? '',
       isCompleted: map['isCompleted'] ?? false,
-      createdAt: DateTime.parse(map['createdAt']),
-      completedAt: map['completedAt'] != null 
-          ? DateTime.parse(map['completedAt']) 
-          : null,
       priority: map['priority'] ?? 1,
+      category: map['category'] ?? 'General',
+      dueDate: map['dueDate'] != null ? DateTime.parse(map['dueDate']) : null,
+      tags: List<String>.from(map['tags'] ?? []),
+      createdAt: DateTime.parse(map['createdAt']),
+      updatedAt: DateTime.parse(map['updatedAt']),
+      completedAt: map['completedAt'] != null ? DateTime.parse(map['completedAt']) : null,
     );
   }
 
@@ -51,18 +65,26 @@ class Todo {
     String? title,
     String? description,
     bool? isCompleted,
-    DateTime? createdAt,
-    DateTime? completedAt,
     int? priority,
+    String? category,
+    DateTime? dueDate,
+    List<String>? tags,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? completedAt,
   }) {
     return Todo(
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
       isCompleted: isCompleted ?? this.isCompleted,
-      createdAt: createdAt ?? this.createdAt,
-      completedAt: completedAt ?? this.completedAt,
       priority: priority ?? this.priority,
+      category: category ?? this.category,
+      dueDate: dueDate ?? this.dueDate,
+      tags: tags ?? this.tags,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      completedAt: completedAt ?? this.completedAt,
     );
   }
 
@@ -71,6 +93,7 @@ class Todo {
     return copyWith(
       isCompleted: !isCompleted,
       completedAt: !isCompleted ? DateTime.now() : null,
+      updatedAt: DateTime.now(),
     );
   }
 
@@ -102,9 +125,34 @@ class Todo {
     }
   }
 
-  @override
-  String toString() {
-    return 'Todo(id: $id, title: $title, isCompleted: $isCompleted, priority: $priority)';
+  // Check if todo is overdue
+  bool get isOverdue {
+    if (dueDate == null || isCompleted) return false;
+    return DateTime.now().isAfter(dueDate!);
+  }
+
+  // Get days until due
+  int? get daysUntilDue {
+    if (dueDate == null) return null;
+    final now = DateTime.now();
+    final due = DateTime(dueDate!.year, dueDate!.month, dueDate!.day);
+    final today = DateTime(now.year, now.month, now.day);
+    return due.difference(today).inDays;
+  }
+
+  // Get due date string
+  String? get dueDateString {
+    if (dueDate == null) return null;
+    
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final due = DateTime(dueDate!.year, dueDate!.month, dueDate!.day);
+    
+    if (due == today) return 'Today';
+    if (due == today.add(const Duration(days: 1))) return 'Tomorrow';
+    if (due == today.subtract(const Duration(days: 1))) return 'Yesterday';
+    
+    return '${due.day}/${due.month}/${due.year}';
   }
 
   @override
@@ -115,4 +163,9 @@ class Todo {
 
   @override
   int get hashCode => id.hashCode;
+
+  @override
+  String toString() {
+    return 'Todo(id: $id, title: $title, isCompleted: $isCompleted, priority: $priority)';
+  }
 } 

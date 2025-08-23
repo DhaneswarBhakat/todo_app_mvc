@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
-import 'todo_list_screen.dart';
-import 'debug_screen.dart';
+import '../services/theme_service.dart';
+import '../services/api_service.dart';
+import '../models/user.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,85 +11,160 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
-  late AnimationController _animationController;
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
+  
+  bool _isLoginMode = true;
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  
+  // Animation controllers
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late AnimationController _scaleController;
+  
+  // Animations
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  bool _isAuthenticating = false;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
+    
+    // Initialize animation controllers
+    _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
     
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    // Setup animations
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(
-      parent: _animationController,
+      parent: _fadeController,
       curve: Curves.easeInOut,
     ));
     
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.5),
+      begin: const Offset(0, 0.3),
       end: Offset.zero,
     ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutBack,
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
     ));
-
-    _animationController.forward();
-    _checkBiometricAvailability();
+    
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _scaleController,
+      curve: Curves.elasticOut,
+    ));
+    
+    // Start animations
+    _fadeController.forward();
+    _slideController.forward();
+    _scaleController.forward();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    _fadeController.dispose();
+    _slideController.dispose();
+    _scaleController.dispose();
     super.dispose();
   }
 
-  Future<void> _checkBiometricAvailability() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    await authService.checkAuthenticationState();
+  void _toggleMode() {
+    setState(() {
+      _isLoginMode = !_isLoginMode;
+    });
+    
+    // Reset form
+    _formKey.currentState?.reset();
+    
+    // Animate mode change
+    _scaleController.reset();
+    _scaleController.forward();
   }
 
-  Future<void> _authenticate() async {
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+    
     setState(() {
-      _isAuthenticating = true;
+      _isLoading = true;
     });
-
+    
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final success = await authService.authenticateWithBiometrics();
-      
-      if (success && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const TodoListScreen()),
+      if (_isLoginMode) {
+        // Login
+        final result = await ApiService.login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
         );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Authentication failed. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
+        
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/todos');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Welcome back, ${result['user']['name']}!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        // Register
+        final result = await ApiService.register(
+          name: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
         );
+        
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/todos');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('🎉 Welcome, ${result['user']['name']}!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
-    } catch (e) {
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            content: Text('❌ ${error.toString()}'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     } finally {
       if (mounted) {
         setState(() {
-          _isAuthenticating = false;
+          _isLoading = false;
         });
       }
     }
@@ -97,306 +172,254 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final isTablet = screenWidth > 600;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Theme.of(context).primaryColor.withOpacity(0.8),
-              Theme.of(context).primaryColor,
-              Theme.of(context).primaryColor.withOpacity(0.6),
-            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    const Color(0xFF1a1a2e),
+                    const Color(0xFF16213e),
+                    const Color(0xFF0f3460),
+                  ]
+                : [
+                    const Color(0xFF667eea),
+                    const Color(0xFF764ba2),
+                    const Color(0xFFf093fb),
+                  ],
           ),
         ),
         child: SafeArea(
-          child: Stack(
-            children: [
-              // Fingerprint sensor location indicator
-              Positioned(
-                bottom: screenHeight * 0.1,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    width: isTablet ? 80 : 60,
-                    height: isTablet ? 80 : 60,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(isTablet ? 40 : 30),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 2,
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.fingerprint,
-                      color: Colors.white,
-                      size: isTablet ? 40 : 30,
-                    ),
-                  ),
-                ),
-              ),
-              Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: isTablet ? 500 : double.infinity,
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(isTablet ? 48 : 24),
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: ScaleTransition(
+                    scale: _scaleAnimation,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         // App Logo/Icon
-                        FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: Container(
-                            width: isTablet ? 160 : 120,
-                            height: isTablet ? 160 : 120,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(isTablet ? 80 : 60),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.check_circle_outline,
-                              size: isTablet ? 80 : 60,
-                              color: Colors.green,
-                            ),
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 20,
+                                spreadRadius: 5,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.task_alt,
+                            size: 60,
+                            color: Colors.white,
                           ),
                         ),
                         
-                        SizedBox(height: isTablet ? 60 : 40),
+                        const SizedBox(height: 32),
                         
                         // App Title
-                        SlideTransition(
-                          position: _slideAnimation,
-                          child: FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: Text(
-                              'Todo App',
-                              style: TextStyle(
-                                fontSize: isTablet ? 48 : 32,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
+                        Text(
+                          'Todo App',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 1.2,
                           ),
                         ),
                         
-                        const SizedBox(height: 8),
-                        
-                        // Subtitle
-                        SlideTransition(
-                          position: _slideAnimation,
-                          child: FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: Text(
-                              'Secure your tasks with biometric authentication',
-                              style: TextStyle(
-                                fontSize: isTablet ? 20 : 16,
-                                color: Colors.white70,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
+                        Text(
+                          _isLoginMode ? 'Welcome back!' : 'Create your account',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white.withOpacity(0.8),
+                            fontWeight: FontWeight.w300,
                           ),
                         ),
                         
-                        SizedBox(height: isTablet ? 80 : 60),
+                        const SizedBox(height: 40),
                         
-                        // Biometric Authentication Button
-                        SlideTransition(
-                          position: _slideAnimation,
-                          child: FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: Consumer<AuthService>(
-                              builder: (context, authService, child) {
-                                if (!authService.isBiometricAvailable) {
-                                  return Container(
-                                    padding: EdgeInsets.all(isTablet ? 24 : 16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      'Biometric authentication not available',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: isTablet ? 20 : 16,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  );
-                                }
+                        // Form Card
+                        Container(
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 30,
+                                spreadRadius: 5,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              children: [
+                                // Name field (only for registration)
+                                if (!_isLoginMode) ...[
+                                  _buildTextField(
+                                    controller: _nameController,
+                                    label: 'Full Name',
+                                    icon: Icons.person,
+                                    validator: (value) {
+                                      if (value == null || value.trim().isEmpty) {
+                                        return 'Please enter your name';
+                                      }
+                                      if (value.trim().length < 2) {
+                                        return 'Name must be at least 2 characters';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
                                 
-                                return Column(
+                                // Email field
+                                _buildTextField(
+                                  controller: _emailController,
+                                  label: 'Email',
+                                  icon: Icons.email,
+                                  keyboardType: TextInputType.emailAddress,
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Please enter your email';
+                                    }
+                                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                        .hasMatch(value.trim())) {
+                                      return 'Please enter a valid email';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                
+                                const SizedBox(height: 20),
+                                
+                                // Password field
+                                _buildTextField(
+                                  controller: _passwordController,
+                                  label: 'Password',
+                                  icon: Icons.lock,
+                                  obscureText: _obscurePassword,
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscurePassword
+                                          ? Icons.visibility
+                                          : Icons.visibility_off,
+                                      color: Colors.grey[600],
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _obscurePassword = !_obscurePassword;
+                                      });
+                                    },
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your password';
+                                    }
+                                    if (value.length < 6) {
+                                      return 'Password must be at least 6 characters';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                
+                                const SizedBox(height: 32),
+                                
+                                // Submit Button
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 56,
+                                  child: ElevatedButton(
+                                    onPressed: _isLoading ? null : _submitForm,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: theme.primaryColor,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      elevation: 8,
+                                      shadowColor: theme.primaryColor.withOpacity(0.3),
+                                    ),
+                                    child: _isLoading
+                                        ? const SizedBox(
+                                            width: 24,
+                                            height: 24,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                            ),
+                                          )
+                                        : Text(
+                                            _isLoginMode ? 'Sign In' : 'Create Account',
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                                
+                                const SizedBox(height: 24),
+                                
+                                // Mode Toggle
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    GestureDetector(
-                                      onTap: _isAuthenticating ? null : _authenticate,
-                                      child: Container(
-                                        width: double.infinity,
-                                        padding: EdgeInsets.all(isTablet ? 28 : 20),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(16),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withOpacity(0.1),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 5),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            if (_isAuthenticating)
-                                              SizedBox(
-                                                width: isTablet ? 24 : 20,
-                                                height: isTablet ? 24 : 20,
-                                                child: const CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
-                                                ),
-                                              )
-                                            else
-                                              Icon(
-                                                Icons.fingerprint,
-                                                size: isTablet ? 32 : 24,
-                                                color: Colors.green,
-                                              ),
-                                            SizedBox(width: isTablet ? 16 : 12),
-                                            Text(
-                                              _isAuthenticating ? 'Authenticating...' : 'Authenticate with Fingerprint',
-                                              style: TextStyle(
-                                                fontSize: isTablet ? 22 : 18,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.green,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                    Text(
+                                      _isLoginMode
+                                          ? "Don't have an account? "
+                                          : 'Already have an account? ',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 14,
                                       ),
                                     ),
-                                    SizedBox(height: isTablet ? 20 : 16),
-                                    // Fallback button for difficult fingerprint sensors
-                                    GestureDetector(
-                                      onTap: _isAuthenticating ? null : _authenticate,
-                                      child: Container(
-                                        width: double.infinity,
-                                        padding: EdgeInsets.all(isTablet ? 20 : 16),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: Colors.white.withOpacity(0.3),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.touch_app,
-                                              size: isTablet ? 24 : 20,
-                                              color: Colors.white,
-                                            ),
-                                            SizedBox(width: isTablet ? 12 : 8),
-                                            Text(
-                                              'Try Again (Tap anywhere on screen)',
-                                              style: TextStyle(
-                                                fontSize: isTablet ? 16 : 14,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ],
+                                    TextButton(
+                                      onPressed: _toggleMode,
+                                      child: Text(
+                                        _isLoginMode ? 'Sign Up' : 'Sign In',
+                                        style: TextStyle(
+                                          color: theme.primaryColor,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
                                         ),
                                       ),
                                     ),
                                   ],
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        
-                        SizedBox(height: isTablet ? 32 : 20),
-                        
-                        // Debug Button (for troubleshooting)
-                        SlideTransition(
-                          position: _slideAnimation,
-                          child: FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const DebugScreen(),
-                                  ),
-                                );
-                              },
-                              child: Text(
-                                '🔧 Debug Biometric Auth',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: isTablet ? 16 : 12,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        
-                        SizedBox(height: isTablet ? 32 : 20),
-                        
-                        // Info Text
-                        SlideTransition(
-                          position: _slideAnimation,
-                          child: FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: Column(
-                              children: [
-                                Text(
-                                  'Touch the fingerprint sensor to unlock your todo app',
-                                  style: TextStyle(
-                                    color: Colors.white60,
-                                    fontSize: isTablet ? 18 : 14,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                SizedBox(height: isTablet ? 20 : 16),
-                                Container(
-                                  padding: EdgeInsets.all(isTablet ? 16 : 12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.white.withOpacity(0.3),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    '💡 Tip: Look for the fingerprint sensor on your screen or try the bottom center area',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: isTablet ? 16 : 12,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
                                 ),
                               ],
                             ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 32),
+                        
+                        // Footer Text
+                        Text(
+                          'Your tasks, organized and beautiful',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 14,
+                            fontStyle: FontStyle.italic,
                           ),
                         ),
                       ],
@@ -404,8 +427,67 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   ),
                 ),
               ),
-            ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscureText = false,
+    TextInputType? keyboardType,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      validator: validator,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.grey[600]),
+        suffixIcon: suffixIcon,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Theme.of(context).primaryColor,
+            width: 2,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.red[300]!),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.red[400]!, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.grey[50],
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        labelStyle: TextStyle(
+          color: Colors.grey[600],
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
