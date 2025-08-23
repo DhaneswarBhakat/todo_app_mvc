@@ -1,4 +1,4 @@
-# Ignore Flutter app files completely - only deploy backend as Node.js
+# Ignore Flutter app files - only deploy backend
 lib/
 test/
 android/
@@ -17,10 +17,3 @@ README.md
 .flutter-plugins-dependencies
 .packages
 build/
-
-# Only include backend and root deployment files
-!backend/
-!package.json
-!.env
-!railway.json
-!.railwayignore
